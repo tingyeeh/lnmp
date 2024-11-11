@@ -1,0 +1,2 @@
+# lnmp
+Ansible install script
