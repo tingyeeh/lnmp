@@ -1,0 +1,26 @@
+- name: 安装 PHP 及扩展
+  ansible.builtin.apt:
+    name:
+      - "php{{ php_version }}"
+      - "php{{ php_version }}-cli"
+      - "php{{ php_version }}-fpm"
+      - "php{{ php_version }}-bcmath"
+      - "php{{ php_version }}-gd"
+      - "php{{ php_version }}-intl"
+      - "php{{ php_version }}-mbstring"
+      - "php{{ php_version }}-soap"
+      - "php{{ php_version }}-xml"
+      - "php{{ php_version }}-zip"
+      - "php{{ php_version }}-opcache"
+      - "php{{ php_version }}-imap"
+      - "php{{ php_version }}-curl"
+      - "php{{ php_version }}-mysql"
+      - libxml2
+    state: present
+    update_cache: yes
+
+- name: 启动并启用 PHP-FPM 服务
+  ansible.builtin.service:
+    name: "php{{ php_version }}-fpm"
+    state: started
+    enabled: true

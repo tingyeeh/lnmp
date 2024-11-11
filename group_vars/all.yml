@@ -1,0 +1,8 @@
+# 设置通用的变量
+nginx_version: "1.26.2"
+
+
+mysql_root_password: "your_secure_password"
+
+
+php_version: "8.2.25"
