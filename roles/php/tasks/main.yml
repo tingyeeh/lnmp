@@ -54,13 +54,3 @@
     name: "php{{ php_version }}-fpm"
     state: started
     enabled: true
-
-# Handlers
-handlers:
-  - name: enable lzf extension
-    ansible.builtin.command: phpenmod lzf
-
-  - name: restart PHP-FPM
-    ansible.builtin.service:
-      name: "php{{ php_version }}-fpm"
-      state: restarted
