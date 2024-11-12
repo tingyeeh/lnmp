@@ -1,52 +1,18 @@
-- name: 安装 gnupg 以支持 GPG 密钥管理
-  ansible.builtin.apt:
-    name: gnupg
-    state: present
-    update_cache: yes
-
-- name: 添加 PHP Sury GPG 密钥
-  ansible.builtin.apt_key:
-    url: https://packages.sury.org/php/apt.gpg
-    state: present
-
-- name: 添加 Sury PPA 所需依赖
-  ansible.builtin.apt:
-    name:
-      - lsb-release
-      - apt-transport-https
-      - ca-certificates
-    state: present
-    update_cache: yes
-
-- name: 添加 PHP Sury PPA 源
-  ansible.builtin.apt_repository:
-    repo: "deb https://packages.sury.org/php/ {{ ansible_facts['lsb']['codename'] }} main"
-    state: present
-    filename: "php-sury"
-
-- name: 更新包缓存
+- name: 更新软件包列表
   ansible.builtin.apt:
     update_cache: yes
-  when: add_repo is changed
 
-- name: 确认 PHP 版本是否可用
-  ansible.builtin.apt:
-    name: "php{{ php_version }}"
-    state: present
-  register: php_install_check
-  ignore_errors: yes
-
-- name: 失败时提示 PHP 版本不可用
-  ansible.builtin.fail:
-    msg: "指定的 PHP 版本 {{ php_version }} 不可用，请检查版本号或包源。"
-  when: php_install_check is failed
-
-- name: 安装 PHP 和扩展
+- name: 安装 PHP 稳定版和基础组件
   ansible.builtin.apt:
     name:
       - "php{{ php_version }}"
       - "php{{ php_version }}-cli"
       - "php{{ php_version }}-fpm"
+    state: present
+
+- name: 安装常用 PHP 扩展
+  ansible.builtin.apt:
+    name:
       - "php{{ php_version }}-bcmath"
       - "php{{ php_version }}-gd"
       - "php{{ php_version }}-intl"
@@ -58,13 +24,43 @@
       - "php{{ php_version }}-imap"
       - "php{{ php_version }}-curl"
       - "php{{ php_version }}-mysql"
+      - "php{{ php_version }}-apcu"
+      - "php{{ php_version }}-redis"
+      - "php{{ php_version }}-imagick"
       - libxml2
+      - php-pear
+      - "php{{ php_version }}-dev"
     state: present
-  when: php_install_check is succeeded
+
+- name: 使用 PECL 安装 lzf 扩展
+  ansible.builtin.shell: |
+    pecl install lzf
+  args:
+    creates: /usr/lib/php/$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')/lzf.so
+  notify: enable lzf extension
+
+- name: 启用 lzf 扩展
+  ansible.builtin.shell: |
+    echo "extension=lzf.so" > /etc/php/{{ php_version }}/mods-available/lzf.ini
+  notify: phpenmod lzf
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: 启用 lzf 扩展模块
+  ansible.builtin.command: phpenmod lzf
+  when: ansible_facts['os_family'] == "Debian"
 
 - name: 启动并启用 PHP-FPM 服务
   ansible.builtin.service:
     name: "php{{ php_version }}-fpm"
     state: started
     enabled: true
-  when: php_install_check is succeeded
+
+# Handlers
+handlers:
+  - name: enable lzf extension
+    ansible.builtin.command: phpenmod lzf
+
+  - name: restart PHP-FPM
+    ansible.builtin.service:
+      name: "php{{ php_version }}-fpm"
+      state: restarted
