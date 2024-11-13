@@ -17,18 +17,31 @@
 
 - name: 更新 PECL 渠道
   ansible.builtin.shell: pecl channel-update pecl.php.net
+- name: 检查 lzf 模块是否已安装
+  ansible.builtin.shell: "php -m | grep -E '^lzf$'"
+  register: lzf_check
+  changed_when: false
+  failed_when: false
 
-- name: 使用 PECL 安装 lzf 模块
+- name: 使用 PECL 安装 lzf 模块（仅在未安装时）
   ansible.builtin.shell: |
     printf "no\n" | pecl install lzf
   args:
     creates: "/usr/lib/php/$(php -r 'echo PHP_MAJOR_VERSION.\".\".PHP_MINOR_VERSION;')/lzf.so"
+  when: lzf_check.rc != 0  # 仅在 lzf 模块未找到时执行
   notify: restart php-fpm
 
 - name: 启用 lzf 模块
   ansible.builtin.shell: |
     echo "extension=lzf.so" > {{ php_extensions_dir }}/lzf.ini
   notify: restart php-fpm
+  when: lzf_check.rc != 0  # 仅在 lzf 模块未找到时执行
+
+- name: 验证 lzf 模块是否已加载
+  ansible.builtin.shell: "php -m | grep -E '^lzf$'"
+  register: lzf_verification
+  changed_when: false
+  failed_when: lzf_verification.rc != 0
 
 - name: 安装 Git 以下载 snappy 源码
   ansible.builtin.apt:
