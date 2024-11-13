@@ -4,7 +4,7 @@
 
 - name: 安装 PHP 及基础扩展
   ansible.builtin.apt:
-    name: "{{ item }}={{ php_exact_version }}"
+    name: "{{ item }}"
     state: present
   loop: "{{ php_modules }}"
 
