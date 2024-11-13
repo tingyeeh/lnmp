@@ -2,55 +2,71 @@
   ansible.builtin.apt:
     update_cache: yes
 
-- name: 安装 PHP 稳定版和基础组件
+- name: 安装 PHP 及基础扩展
   ansible.builtin.apt:
-    name:
-      - "php{{ php_version }}"
-      - "php{{ php_version }}-cli"
-      - "php{{ php_version }}-fpm"
+    name: "{{ item }}={{ php_exact_version }}"
     state: present
+  loop: "{{ php_modules }}"
 
-- name: 安装常用 PHP 扩展
+- name: 安装 PECL 和 PHP 开发工具
   ansible.builtin.apt:
     name:
-      - "php{{ php_version }}-bcmath"
-      - "php{{ php_version }}-gd"
-      - "php{{ php_version }}-intl"
-      - "php{{ php_version }}-mbstring"
-      - "php{{ php_version }}-soap"
-      - "php{{ php_version }}-xml"
-      - "php{{ php_version }}-zip"
-      - "php{{ php_version }}-opcache"
-      - "php{{ php_version }}-imap"
-      - "php{{ php_version }}-curl"
-      - "php{{ php_version }}-mysql"
-      - "php{{ php_version }}-apcu"
-      - "php{{ php_version }}-redis"
-      - "php{{ php_version }}-imagick"
-      - libxml2
       - php-pear
       - "php{{ php_version }}-dev"
     state: present
 
-- name: 使用 PECL 安装 lzf 扩展
+- name: 更新 PECL 渠道
+  ansible.builtin.shell: pecl channel-update pecl.php.net
+
+- name: 使用 PECL 安装模块
   ansible.builtin.shell: |
-    pecl install lzf
+    printf "no\n" | pecl install {{ item }}
   args:
-    creates: /usr/lib/php/$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')/lzf.so
-  notify: enable lzf extension
+    creates: "/usr/lib/php/$(php -r 'echo PHP_MAJOR_VERSION.\".\".PHP_MINOR_VERSION;')/{{ item }}.so"
+  loop: "{{ php_pecl_modules }}"
+  notify: Enable PECL Modules
 
-- name: 启用 lzf 扩展
+- name: 启用 PECL 模块
   ansible.builtin.shell: |
-    echo "extension=lzf.so" > /etc/php/{{ php_version }}/mods-available/lzf.ini
-  notify: phpenmod lzf
-  when: ansible_facts['os_family'] == "Debian"
+    echo "extension={{ item }}.so" > {{ php_extensions_dir }}/{{ item }}.ini
+  loop: "{{ php_pecl_modules }}"
+  notify: Enable PECL Modules
 
-- name: 启用 lzf 扩展模块
-  ansible.builtin.command: phpenmod lzf
-  when: ansible_facts['os_family'] == "Debian"
+- name: 安装 Git 以下载 snappy 源码
+  ansible.builtin.apt:
+    name: git
+    state: present
 
-- name: 启动并启用 PHP-FPM 服务
-  ansible.builtin.service:
+- name: 克隆 snappy 扩展源码
+  ansible.builtin.git:
+    repo: "{{ php_snappy_repo }}"
+    dest: /tmp/php-ext-snappy
+    version: HEAD
+    depth: 1
+
+- name: 编译并安装 snappy 扩展
+  ansible.builtin.shell: |
+    cd /tmp/php-ext-snappy
+    phpize
+    ./configure
+    make
+    make install
+  args:
+    creates: "/usr/lib/php/$(php -r 'echo PHP_MAJOR_VERSION.\".\".PHP_MINOR_VERSION;')/snappy.so"
+
+- name: 启用 snappy 扩展
+  ansible.builtin.shell: |
+    echo "extension=snappy.so" > {{ php_extensions_dir }}/snappy.ini
+  notify: Enable Snappy Extension
+
+- name: 清理 snappy 源码目录
+  ansible.builtin.file:
+    path: /tmp/php-ext-snappy
+    state: absent
+
+- name: 重启 PHP-FPM 服务
+  ansible.builtin.systemd:
     name: "php{{ php_version }}-fpm"
-    state: started
-    enabled: true
+    state: restarted
+    enabled: yes
+  notify: restart php-fpm

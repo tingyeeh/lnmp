@@ -6,3 +6,30 @@ mysql_root_password: "your_secure_password"
 
 
 php_version: "8.2"
+php_exact_version: "8.2.24-1~deb12u1"
+php_modules:
+  - php{{ php_version }}
+  - php{{ php_version }}-cli
+  - php{{ php_version }}-fpm
+  - php{{ php_version }}-bcmath
+  - php{{ php_version }}-gd
+  - php{{ php_version }}-intl
+  - php{{ php_version }}-mbstring
+  - php{{ php_version }}-soap
+  - php{{ php_version }}-xml
+  - php{{ php_version }}-zip
+  - php{{ php_version }}-opcache
+  - php{{ php_version }}-imap
+  - php{{ php_version }}-curl
+  - php{{ php_version }}-mysql
+  - php{{ php_version }}-apcu
+  - php{{ php_version }}-redis
+  - php{{ php_version }}-imagick
+  - php{{ php_version }}-gmp
+  - php{{ php_version }}-xmlrpc
+  - php{{ php_version }}-ldap
+  - php{{ php_version }}-exif
+php_pecl_modules:
+  - "lzf"
+php_snappy_repo: "https://github.com/kjdev/php-ext-snappy.git"
+php_extensions_dir: "/etc/php/{{ php_version }}/mods-available"
