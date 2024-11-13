@@ -2,7 +2,7 @@
   ansible.builtin.apt:
     update_cache: yes
 
-- name: 安装 PHP 及基础扩展
+- name: 安装 PHP 及所有扩展模块
   ansible.builtin.apt:
     name: "{{ item }}"
     state: present
@@ -18,19 +18,17 @@
 - name: 更新 PECL 渠道
   ansible.builtin.shell: pecl channel-update pecl.php.net
 
-- name: 使用 PECL 安装模块
+- name: 使用 PECL 安装 lzf 模块
   ansible.builtin.shell: |
-    printf "no\n" | pecl install {{ item }}
+    printf "no\n" | pecl install lzf
   args:
-    creates: "/usr/lib/php/$(php -r 'echo PHP_MAJOR_VERSION.\".\".PHP_MINOR_VERSION;')/{{ item }}.so"
-  loop: "{{ php_pecl_modules }}"
-  notify: Enable PECL Modules
+    creates: "/usr/lib/php/$(php -r 'echo PHP_MAJOR_VERSION.\".\".PHP_MINOR_VERSION;')/lzf.so"
+  notify: restart php-fpm
 
-- name: 启用 PECL 模块
+- name: 启用 lzf 模块
   ansible.builtin.shell: |
-    echo "extension={{ item }}.so" > {{ php_extensions_dir }}/{{ item }}.ini
-  loop: "{{ php_pecl_modules }}"
-  notify: Enable PECL Modules
+    echo "extension=lzf.so" > {{ php_extensions_dir }}/lzf.ini
+  notify: restart php-fpm
 
 - name: 安装 Git 以下载 snappy 源码
   ansible.builtin.apt:
@@ -57,16 +55,23 @@
 - name: 启用 snappy 扩展
   ansible.builtin.shell: |
     echo "extension=snappy.so" > {{ php_extensions_dir }}/snappy.ini
-  notify: Enable Snappy Extension
+  notify: restart php-fpm
 
 - name: 清理 snappy 源码目录
   ansible.builtin.file:
     path: /tmp/php-ext-snappy
     state: absent
 
-- name: 重启 PHP-FPM 服务
-  ansible.builtin.systemd:
-    name: "php{{ php_version }}-fpm"
-    state: restarted
-    enabled: yes
-  notify: restart php-fpm
+- name: 验证 lzf 模块是否已加载
+  ansible.builtin.shell: "php -m | grep -E '^lzf$'"
+  register: lzf_check
+  changed_when: false
+  failed_when: lzf_check.rc != 0
+  ignore_errors: no
+
+- name: 验证 snappy 模块是否已加载
+  ansible.builtin.shell: "php -m | grep -E '^snappy$'"
+  register: snappy_check
+  changed_when: false
+  failed_when: snappy_check.rc != 0
+  ignore_errors: no

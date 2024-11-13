@@ -1,12 +1,9 @@
 # 设置通用的变量
 nginx_version: "1.26.2"
-
-
 mysql_root_password: "your_secure_password"
 
-
+# PHP 相关配置
 php_version: "8.2"
-php_exact_version: "8.2.24-1~deb12u1"
 php_modules:
   - php{{ php_version }}
   - php{{ php_version }}-cli

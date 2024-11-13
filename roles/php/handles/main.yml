@@ -1,11 +1,4 @@
-- name: Enable PECL Modules
-  ansible.builtin.command:
-    cmd: phpenmod "{{ item }}"
-  loop: "{{ php_pecl_modules }}"
-
-- name: Enable Snappy Extension
-  ansible.builtin.command:
-    cmd: phpenmod snappy
+# roles/php/handlers/main.yml
 
 - name: restart php-fpm
   ansible.builtin.systemd:
